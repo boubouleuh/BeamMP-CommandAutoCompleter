@@ -9,6 +9,9 @@ let lastSentMessage = "";
 let lastMsgId = 0;
 let newChatMenu = false;
 
+
+let isCommandCompleter = false;
+
 app.directive('multiplayerchat', [function () {
 	return {
 		templateUrl: '/ui/modules/apps/BeamMP-Chat/app.html',
@@ -32,6 +35,8 @@ app.controller("Chat", ['$scope', 'Settings', function ($scope, Settings) {
 			chatinput.addEventListener("mouseover", function(){ chatShown = true; showChat(); });
 			chatinput.addEventListener("mouseout", function(){ chatShown = false; });
 			chatinput.addEventListener('keydown', onKeyDown); //used for 'up arrow' last msg functionality
+			chatinput.addEventListener('keyup', onKeyUp); //used for command completion
+
 		}
 
 		var chatlist = document.getElementById("chat-list");
@@ -170,7 +175,6 @@ app.controller("Chat", ['$scope', 'Settings', function ($scope, Settings) {
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
 var chatShown = false;
 var chatShowTime = 3500; // 5000ms
 var chatFadeSteps = 1/30; // 60 steps
@@ -197,35 +201,46 @@ async function fadeNode(node) {
 }
 
 async function showChat() {
-	if (newChatMenu) return;
+	if (newChatMenu) return;			
+	if (!isCommandCompleter){  //Chat cant be show when the completer is used
+			// While the mouse is over the chat, we wait
+			var chatMessages = []
+			while (chatShown) {
+				if (isCommandCompleter){
+					chatShown = false;
+				}
+				// Get the chat and the messages
+				// Copy the variables so it's a pointer
+				var tempMessages = document.getElementById("chat-list").getElementsByTagName("li");
+				for (i = 0; i < tempMessages.length; i++) {
+					chatMessages[i] = tempMessages[i];
+				}
+				// Set all messages opacity to 1.0
+				for (var i = 0; i < chatMessages.length; ++i) chatMessages[i].style.opacity = 1.0;
+				await sleep(100);
+			}
+			// Once the mouse is not over the chat anymore, we wait before fading
+			// We take care of checking that the chat is not shown while we are waiting before fading
+			let showTime = chatShowTime
+			if (isCommandCompleter){
+				showTime = 0
+			}
 
-	// While the mouse is over the chat, we wait
-	var chatMessages = []
-	while (chatShown) {
-		// Get the chat and the messages
-		// Copy the variables so it's a pointer
-		var tempMessages = document.getElementById("chat-list").getElementsByTagName("li");
-		for (i = 0; i < tempMessages.length; i++) {
-			chatMessages[i] = tempMessages[i];
-		}
-		// Set all messages opacity to 1.0
-		for (var i = 0; i < chatMessages.length; ++i) chatMessages[i].style.opacity = 1.0;
-		await sleep(100);
-	}
-	// Once the mouse is not over the chat anymore, we wait before fading
-	// We take care of checking that the chat is not shown while we are waiting before fading
-	for (var steps = chatShowTime/35; steps < chatShowTime; steps += chatShowTime/35) {
-		if (chatShown) return;
-		await sleep(chatShowTime/35);
-	}
-	var chatOpacity = 1.0;
-	while (chatOpacity > 0.0) {
-		// If the user move the mouse hover the chat before
-		// this loop as ended then we break the loop
-		if (chatShown) break;
-		chatOpacity = chatOpacity - chatFadeSteps;
-		for (var i = 0; i < chatMessages.length; ++i) chatMessages[i].style.opacity = chatOpacity;
-		await sleep(chatFadeSpeed);
+			for (var steps = showTime/35; steps < showTime; steps += showTime/35) {
+				if (chatShown) return;
+				await sleep(showTime/35);
+			}
+			
+
+			var chatOpacity = 1.0;
+			while (chatOpacity > 0.0) {
+				// If the user move the mouse hover the chat before
+				// this loop as ended then we break the loop
+				if (chatShown) break;
+				chatOpacity = chatOpacity - chatFadeSteps;
+				for (var i = 0; i < chatMessages.length; ++i) chatMessages[i].style.opacity = chatOpacity;
+				await sleep(chatFadeSpeed);
+			}
 	}
 }
 // -------------------------------------------- CHAT FADING -------------------------------------------- //
@@ -348,7 +363,6 @@ function addMessage(msg, time = null) {
 	// Create the message node
 	const chatMessageNode = document.createElement("li");
 	chatMessageNode.className = "chat-message";
-	fadeNode(chatMessageNode);
 
 	// create node for the timestamp
 	const messageTimestampNode = document.createElement("span");
@@ -389,9 +403,224 @@ function addMessage(msg, time = null) {
 }
 
 function onKeyDown(e) {
+	
+	let jsonCommands = getJsonCommands()
+	if (e.key == "Tab" && isCommandCompleter){		//Tabulation
+		e.preventDefault();	
+		let li = document.getElementById("command-list").firstChild;
+		console.log(li.dataset.command)
+		e.currentTarget.args = jsonCommands[li.dataset.command].parameters;
+		e.currentTarget.prefx = getCommandPrefix();
+		e.currentTarget.li = li;
+
+		chooseCommand(e)
+		
+	}
+
 	if (e.key == "ArrowUp") {
 		console.log(e);
 		document.getElementById("chat-input").value = lastSentMessage;
 		e.target.setSelectionRange(lastSentMessage.length, lastSentMessage.length);
 	}
+	
+}
+
+function onKeyUp(e){
+
+	commandCompleter(e);
+}
+
+
+function chooseCommand(e){
+
+	let li = e.currentTarget.li;
+	let args = e.currentTarget.args;
+	let prefix = e.currentTarget.prefx;
+
+	let chatInput = document.getElementById("chat-input");
+
+	chatInput.value = prefix + li.dataset.command + " ";
+	chatInput.focus();
+
+	commandCompleter()
+}
+
+function getJsonCommands(){
+	return JSON.parse(`
+	{
+		"ban": {
+		"parameters": ["playerName", "duration"],
+		"description": "Bans a player from the server"
+		},
+		"kick": {
+		"parameters": ["playerName"],
+		"description": "Kicks a player from the server"
+		},
+		"mute": {
+		"parameters": ["playerName", "duration"],
+		"description": "Mutes a player in the chat"
+		},
+		"unban": {
+		"parameters": ["playerName"],
+		"description": "Unbans a player from the server"
+		},
+		"give": {
+		"parameters": ["playerName", "item", "quantity"],
+		"description": "Gives an item to a player"
+		},
+		"tp": {
+		"parameters": ["playerName", "location"],
+		"description": "Teleports a player to a specific location"
+		}
+	}
+	`);
+}
+
+function getCommandPrefix(){
+	return "/"
+}
+
+
+function commandCompleter(e){
+
+		let jsonCommands = getJsonCommands()
+
+		let chatinput = document.getElementById("chat-input");
+		let commandCompleter = document.getElementById("command-completer")
+		let value = chatinput.value;
+
+		// Get the current value of the input
+		const trimmedValue = value.trim();
+
+		// Extract the command from the input
+		const inputParts = trimmedValue.split(" ");
+		const inputCommand = inputParts[0].substring(1); // Remove the prefix '/'
+
+		let placeholder = document.querySelector(".placeholder")
+
+		let prefix = getCommandPrefix();
+		
+
+		if (value.startsWith(prefix)){
+
+			isCommandCompleter = true;
+			//make it visible if not
+			if (commandCompleter.style.display = "none"){
+				commandCompleter.style.display = "unset";
+			}
+
+			let commandList = document.getElementById("command-list");
+
+			while (commandList.firstChild) {
+				commandList.firstChild.remove();
+			}
+
+			// Check if the input value does not already contain a command
+			let containsCommand = false;
+			for (let command in jsonCommands) {
+				if (value.startsWith(prefix + command + " ")) {
+				containsCommand = true;
+				break;
+				}
+			}
+
+
+			if (!containsCommand){
+				for (let command in jsonCommands) {
+
+					if (!command.startsWith(inputCommand)){
+						continue
+					}
+					
+					placeholder.textContent = ""
+
+					const li = document.createElement("li");			//Todo createli function
+
+
+					const button = document.createElement("button");
+
+
+					const nameSpan = document.createElement("span");
+					const descriptionSpan = document.createElement("span");
+
+					nameSpan.textContent = command;
+
+					descriptionSpan.textContent = jsonCommands[command].description;			
+
+					li.dataset.command = command;
+
+					button.classList.add("cmd-buttons");
+
+					button.appendChild(nameSpan);
+					button.appendChild(descriptionSpan);
+					li.appendChild(button);
+					commandList.appendChild(li);
+
+					button.addEventListener("click", chooseCommand);
+					button.li = li;
+					button.args = jsonCommands[command].parameters;
+					button.prefx= prefix;
+
+				}
+			}
+			else{		
+
+				let str = "";
+				if (inputParts.length > 1) {
+					
+					let lastPart = inputParts[inputParts.length - 1];		
+					for (let i = 0; i < lastPart.length; i++) { 			//Probably need revision since its not 100% accurate
+						str += '  '; 										//That piece of code is used to move the argument placeholder when writing
+					} 
+				}	
+					for (let i = 0; i < inputCommand.length; i++) { 		//To take the command size and add it too, needed to be accurate
+						str += '  '; 
+					} 
+							
+					
+				
+
+				let remainingParameters = jsonCommands[inputCommand].parameters.slice(inputParts.length - 1);
+	
+				let newPlaceholder = str + remainingParameters.join(" ");
+
+				placeholder.textContent = newPlaceholder;
+
+																//need to do that with new defined array to choose, for example if the arg is playername then serverside every playername can be sended and we will loop in that
+				for (let arg in jsonCommands[inputCommand].parameters) {
+
+	
+					// const parameters = jsonCommands[inputCommand].parameters;
+					//   const li = document.createElement("li");
+					//   const button = document.createElement("button");
+			  
+					//   button.addEventListener("click", chooseCommand);
+					//   button.args = parameters;
+					//   button.prefx = prefix;
+			  
+					//   const nameSpan = document.createElement("span");
+			  
+					//   nameSpan.textContent = arg;		
+
+					//   li.dataset.command = inputCommand;
+			  
+					//   button.classList.add("cmd-buttons");
+			  
+					//   button.appendChild(nameSpan);
+					//   li.appendChild(button);
+			  
+					//   commandList.appendChild(li);
+					}
+				
+			}
+			
+
+		}else{
+			placeholder.textContent = ""			//reset all
+			isCommandCompleter = false;
+			chatShown = true;
+			showChat()
+			commandCompleter.style.display = "none"
+		}
+	
 }

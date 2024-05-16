@@ -48,7 +48,12 @@
 			transition: 0.13s;
 			transition-delay:700ms;
 		}
-		#chatbox:hover {
+
+		#chatbox:hover  {
+			width:100%;
+			transition-delay:0ms;
+		}
+		#chatbox:hover .placeholder {
 			width:100%;
 			transition-delay:0ms;
 		}
@@ -80,15 +85,83 @@
 			color: rgba(255, 255, 255, 0.6);
 			padding-right: 5px;
 		}
+		.cmd-buttons {
+			color: #DDDDDD;
+			border: 2px solid rgba(175, 175, 175, 0.45);
+			transition: 0.20s;
+			background-color:rgba(0, 0, 0, 0.70);
+			height:100%;
+		}
+
+		.cmd-buttons:hover {
+			background-color:rgba(0, 0, 0, 0.50);
+			color: #FFFFFF;
+		}
+
+		#command-completer{
+			display: none;
+			padding: 2px;
+			margin:0;
+			height: 100px; 
+			overflow-x: hidden;
+            overflow-y: auto;
+			position: absolute;
+			bottom: 45px; 
+			left: 55px;
+			width: fit-content;
+			background-color: rgba(0, 0, 0, 0.500);
+			border: 2px solid rgba(175, 175, 175, 0.45);
+			/* padding: 5px; */
+			color: white;
+			
+		}
+
+		#command-completer ul{
+			margin:0;
+			padding-inline-start:0;
+		}
+
+		#command-completer ul li span:nth-of-type(2){
+			margin-left: 10px;
+			overflow: hidden;
+			white-space: nowrap;
+		}
+
+		#command-completer ul li span{
+			pointer-events: none;
+		}
+
+		.placeholder{
+			transition: 0.13s;
+			transition-delay:700ms;
+			width: 125px;
+			overflow: hidden;
+			z-index: 2;
+			white-space: pre;
+			position: absolute;
+			left: 80px;
+			bottom: 13px;
+			pointer-events: none;
+			color: #DDDDDD;
+			font-style: italic;
+		}
 
 		::-webkit-scrollbar {
 			width: 0px;  /* Remove scrollbar space */
 			background: transparent;  /* Optional: just make scrollbar invisible */
 		}
+
+
 	</style>
 	<div id="chat-window">
 		<ul id="chat-list"></ul>
 		<form id="chatbox">
+			<div id="command-completer">
+				<ul id="command-list">
+
+				</ul> 
+			</div>
+			<span class="placeholder"></span>
 			<button id="send-button" class="buttons" ng-click="chatSend()">Send</button>
 			<input id="chat-input" type="text" ng-click="select()" placeholder="Chat here"></input>
 			<button id="swap-button" class="buttons swap-buttons" ng-click="chatSwapHorizontal()">🡘</button>
