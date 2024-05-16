@@ -428,6 +428,18 @@ function onKeyDown(e) {
 function onKeyUp(e){
 
 	commandCompleter(e);
+
+	const element = document.getElementById('command-completer');
+
+	if (!element.querySelector('ul').hasChildNodes()) {
+		element.style.width = "0";
+		element.style.padding = "0";
+		element.style.border = "0";
+	}else if(element.style.width != ""){		//when its empty fix the padding
+		element.style.width = "";
+		element.style.padding = "";
+		element.style.border = "";
+	}
 }
 
 
