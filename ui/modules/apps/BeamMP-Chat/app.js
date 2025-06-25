@@ -157,7 +157,12 @@ app.controller("Chat", ['$scope', 'Settings', function ($scope, Settings) {
 			chatbox.style.display = "flex";
 		}
 	})
-
+	$scope.$on('focusChatInput', function (event, data) {
+		const chatinput = document.getElementById("chat-input");
+		if (chatinput) {
+			chatinput.focus();
+		}
+	});
 	$scope.chatSend = function() {
 		let chatinput = document.getElementById("chat-input");
 		const text = chatinput.value

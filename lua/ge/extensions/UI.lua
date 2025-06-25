@@ -462,6 +462,10 @@ local function toggleChat()
     end
 end
 
+local function focusChat()
+    guihooks.trigger('focusChatInput')
+end
+
 --- This function is for mapping player pings to names for the playerlist
 -- @param playerName string The player name
 -- @param ping number The players ping
@@ -560,6 +564,7 @@ M.getCustomButtonNames = getCustomButtonNames
 
 M.bringToFront = bringToFront
 M.toggleChat = toggleChat
+M.focusChat = focusChat
 
 M.onClientEndMission = onClientEndMission
 M.onExtensionLoaded = onExtensionLoaded
